@@ -1,7 +1,8 @@
-import yfinance as yf
+import yfinance as  yf
 import pickle
 import numpy as np
 import pandas as pd
+# import matplotlib.pyplot as plt
 
 
 try:
@@ -37,6 +38,10 @@ def preparing_data(stock_id, start_data="2022-01-01"):
     final_df = pd.concat([past_100_days,data_testing], ignore_index=True)
     input_data = stock_prediction_scaler.fit_transform(final_df)
 
+    # output_df = final_df
+    # output_df["MA_100_Days"] = final_df.rolling(100).mean()
+    # output_df["MA_200_Days"] = final_df.rolling(200).mean()
+
     x_test, y_test = [], []
     for i in range(sequence_length, input_data.shape[0]):
         x_test.append(input_data[i - sequence_length:i])
@@ -45,4 +50,8 @@ def preparing_data(stock_id, start_data="2022-01-01"):
     
 
     print(stock_prediction_scaler.inverse_transform(y_test.reshape(-1, 1))[-1])
-    return y_test
+    return X_test, y_test
+
+X, y = preparing_data("AAPL")
+
+# print(df.head())

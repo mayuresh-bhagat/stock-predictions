@@ -3,7 +3,7 @@ from flask import Flask, request, Response, app, jsonify, url_for, render_templa
 import numpy as np
 import pandas as pd
 from data_preparation import preparing_data
-import yfinance as yf
+import yfinance as yf # type: ignore
 
 
 app = Flask(__name__, template_folder="templates")
@@ -11,7 +11,7 @@ app = Flask(__name__, template_folder="templates")
 
 try:
     stock_prediction_model = pickle.load(open('stock_price_prediction_model.pkl', "rb"))
-except FileNotFoundError:
+except FileNotFoundError:   
     print("Scaler file not found. Please ensure 'stock_price_prediction_model.pkl' is in the correct directory.")
     stock_prediction_model = None
 
@@ -38,16 +38,19 @@ def preparing_data(stock_id, start_data="2022-01-01"):
         
     df = yf.download(stock_id, start_data)
 
+    
     sequence_length = 200
-
-    X_data = df.Close
 
     data_training = pd.DataFrame(df['Close'][0:int(len(df)*0.40)])
     data_testing = pd.DataFrame(df['Close'][int(len(df)*0.40): int(len(df))])
 
-    past_100_days = data_training.tail(sequence_length)
-    final_df = pd.concat([past_100_days,data_testing], ignore_index=True)
+    past_200_days = data_training.tail(sequence_length)
+    final_df = pd.concat([past_200_days,data_testing], ignore_index=True)
     input_data = stock_prediction_scaler.fit_transform(final_df)
+
+    output_df = final_df
+    output_df["MA_100_Days"] = final_df.rolling(100).mean()
+    output_df["MA_200_Days"] = final_df.rolling(200).mean()
 
     x_test, y_test = [], []
     for i in range(sequence_length, input_data.shape[0]):
@@ -57,7 +60,7 @@ def preparing_data(stock_id, start_data="2022-01-01"):
     
 
     print(stock_prediction_scaler.inverse_transform(y_test.reshape(-1, 1))[-1])
-    return X_test, y_test
+    return X_test, y_test, output_df
 
 
 @app.route('/')
@@ -71,21 +74,28 @@ def predict_api():
     if 'stock_id' in request.args.keys():
         stock_id = request.args['stock_id']
 
-    X, y = preparing_data(stock_id)
-    # Add prediction logic here using stock_prediction_model
-
+    
+    ## preparing the data
+    X, y, df = preparing_data(stock_id)
+    
+    ## Prediction
     prediction = stock_prediction_model.predict(X)
 
+    ## Unscalling
     prediction_unscaled = stock_prediction_scaler.inverse_transform(prediction.reshape(-1, 1))
     y_unscaled = stock_prediction_scaler.inverse_transform(y.reshape(-1, 1))
 
+    ## Mean Different between Acutal data and Predicted data
     mean_diff = np.mean(y_unscaled - prediction_unscaled)
+
+    ## Output
     output = {
         "prediction": prediction_unscaled[-1].tolist(),
         "actual": y_unscaled[-1].tolist(),
         "mean_diff": mean_diff.tolist(),
         "new_prediction": float(prediction_unscaled[-1]) + float(mean_diff)
     }
+
     return jsonify(output)
 
 
