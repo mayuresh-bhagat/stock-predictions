@@ -71,8 +71,9 @@ def preparing_data(stock_id, start_data="2022-01-01", chart=False):
 
     # import yfinance as yf
 
-    df = yf.Ticker('RELIANCE.NS')
-    df = df.history(period="5y")
+    df = yf.download(stock_id, start_data)
+    # df = yf.Ticker(stock_id)
+    # df = df.history(period="5y")
     
     date = df.tail(1).index
 
@@ -143,10 +144,12 @@ def predict_api():
 
         ## Output
         output = {
-            "prediction": prediction_unscaled[-1][0].tolist(),
-            "actual": y_unscaled[-1][0].tolist(),
+            "Stock" : stock_id,
+            "prediction": prediction_unscaled[-1].tolist()[0],
+            "actual": y_unscaled[-1].tolist()[0],
             "mean_diff": mean_diff.tolist(),
-            "new_prediction": float(prediction_unscaled[-1]) + float(mean_diff)
+            "new_prediction (predicted + meand_diff)": float(prediction_unscaled[-1]) + float(mean_diff),
+            "date" : date.tolist()[0]
         }
 
         return jsonify(output)
