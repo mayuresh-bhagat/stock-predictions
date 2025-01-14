@@ -32,10 +32,11 @@ def preparing_data(stock_id, start_data="2022-01-01"):
         raise ValueError("Scaler is not loaded. Cannot proceed with data preparation.")
         
     df = yf.download(stock_id, start_data)
+    # df.reset_index()
 
     sequence_length = 200
 
-    X_data = df.Close
+    date = df.tail(10).index
 
     data_training = pd.DataFrame(df['Close'][0:int(len(df)*0.40)])
     data_testing = pd.DataFrame(df['Close'][int(len(df)*0.40): int(len(df))])
@@ -51,18 +52,27 @@ def preparing_data(stock_id, start_data="2022-01-01"):
     X_test, y_test = np.array(x_test), np.array(y_test)
     
 
-    print(stock_prediction_scaler.inverse_transform(y_test.reshape(-1, 1))[-1])
-    return X_test, y_test
+    # print(stock_prediction_scaler.inverse_transform(y_test.reshape(-1, 1))[-1])
+    return X_test, y_test, date
 
 
 stock_id = "^NSEI"
 
-X, y = preparing_data(stock_id)
+X, y, date = preparing_data(stock_id)
 # Add prediction logic here using stock_prediction_model
 
 prediction = stock_prediction_model.predict(X)
 
 # print(stock_prediction_scaler.inverse_transform(y.reshape(-1, 1))[-1])
 
-output = {'predicted' : stock_prediction_scaler.inverse_transform(prediction.reshape(-1, 1))[-1], 'current' : stock_prediction_scaler.inverse_transform(y.reshape(-1, 1))[-1]}
-print(str(output))
+## Unscalling
+prediction_unscaled = stock_prediction_scaler.inverse_transform(prediction.reshape(-1, 1))
+y_unscaled = stock_prediction_scaler.inverse_transform(y.reshape(-1, 1))
+
+df = pd.DataFrame(y_unscaled, columns=["Acutal"])
+df['Predicted'] = prediction_unscaled
+df2 = df.tail(10)
+df2['Date'] = date
+
+# output = {'predicted' : stock_prediction_scaler.inverse_transform(prediction.reshape(-1, 1))[-1], 'current' : stock_prediction_scaler.inverse_transform(y.reshape(-1, 1))[-1]}
+# print(df2)
